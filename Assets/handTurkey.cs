@@ -89,7 +89,7 @@ public class handTurkey : MonoBehaviour
                     Debug.LogFormat("[Hand Turkey #{0}] Finished entering the word. Module solved!", moduleId);
                     module.HandlePass();
                     moduleSolved = true;
-                    //> SOUND
+                    audio.PlaySoundAtTransform("solve", transform);
                 }
             }
             else
@@ -136,10 +136,8 @@ public class handTurkey : MonoBehaviour
         if (!rest.All(ch => "abcdefghijklmnopqrstuvwxyz".Contains(ch)))
             yield break;
         yield return null;
-        Debug.Log(rest);
         foreach (char ch in rest)
         {
-            Debug.Log(ch);
             while (buttonText.text != ch.ToString().ToUpperInvariant())
             {
                 buttons[0].OnInteract();

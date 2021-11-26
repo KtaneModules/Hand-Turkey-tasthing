@@ -14,10 +14,9 @@ MonoBehaviour:
   id: handTurkey
   title: Hand Turkey
   author: TasThing
-  description: 'No wonder the soup was so expensive this year, it had 24 carrots.
-
-
-    Module idea and implementation by TasThing.'
-  version: 1.0
+  description: "No wonder the soup was so expensive this year, it had 24 carrots.\r\n\r\nModule
+    idea and implementation by TasThing.\r\n\r\n[url=https://ktane.timwi.de/HTML/Hand%20Turkey.html]Manual
+    HTML[/url]\r\n[url=https://ktane.timwi.de/PDF/Hand%20Turkey.pdf]Manual PDF[/url]"
+  version: 1.0.1
   outputFolder: build
   previewImage: {fileID: 2800000, guid: 9f2efb6c0ad505a4784bd22c67101ef1, type: 3}
