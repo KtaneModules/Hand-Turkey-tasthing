@@ -15,10 +15,11 @@ public class handTurkey : MonoBehaviour
 
     public KMSelectable[] buttons;
     public Renderer[] feathers;
+    public TextMesh[] buttonTexts;
     public TextMesh turkeyText;
-    public TextMesh buttonText;
     public TextMesh colorblindText;
     public Color[] featherColors;
+    public Color solveColor;
 
     private int[] featherColorIndices = new int[4];
     private int calculatedNumber;
@@ -32,6 +33,7 @@ public class handTurkey : MonoBehaviour
     private static readonly string[] colorTable = new[] { "crimson", "sanguine", "carmine", "scarlet", "lime", "forest", "verdant", "olive", "turquoise", "teal", "aquamarine", "azure", "purple", "violet", "lavender", "mauve" };
     private static readonly string[] gratefulTable = new[] { "family", "friends", "food", "house", "medicine", "doctors", "firemen", "animals", "music", "games", "football", "modules", "weather", "nature", "quaaludes", "Latinas" };
     private bool longPress;
+    private int offset = 1;
     private Coroutine counting;
 
     private static int moduleIdCounter = 1;
@@ -80,9 +82,9 @@ public class handTurkey : MonoBehaviour
             counting = StartCoroutine(CountUp());
         else
         {
-            if (solution[enteringStage].ToString() == buttonText.text)
+            if (solution[enteringStage].ToString() == buttonTexts[1].text)
             {
-                turkeyText.text += buttonText.text;
+                turkeyText.text += buttonTexts[1].text;
                 enteringStage++;
                 if (turkeyText.text == solution)
                 {
@@ -90,6 +92,11 @@ public class handTurkey : MonoBehaviour
                     module.HandlePass();
                     moduleSolved = true;
                     audio.PlaySoundAtTransform("solve", transform);
+                    colorblindText.text = "";
+                    foreach (Renderer feather in feathers)
+                        feather.material.color = solveColor;
+                    foreach (TextMesh t in buttonTexts)
+                        t.text = "-";
                 }
             }
             else
@@ -102,17 +109,25 @@ public class handTurkey : MonoBehaviour
 
     private void ReleaseButton(KMSelectable button)
     {
-        if (Array.IndexOf(buttons, button) == 1)
+        if (Array.IndexOf(buttons, button) == 1 || moduleSolved)
             return;
-        var offset = longPress ? -1 : 1;
         if (counting != null)
         {
             StopCoroutine(counting);
             counting = null;
         }
+        if (longPress)
+        {
+            offset *= -1;
+            buttonTexts[0].transform.localEulerAngles = offset == 1 ? new Vector3(180f, 0f, 0f) : new Vector3(180f, 0f, 180f);
+            buttonTexts[0].transform.localPosition = offset == 1 ? new Vector3(.00139f, .00151f, .0056f) : new Vector3(-.0008f, .0003f, .0056f);
+        }
+        else
+        {
+            currentLetter = (currentLetter + 26 + offset) % 26;
+            buttonTexts[1].text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[currentLetter].ToString();
+        }
         longPress = false;
-        currentLetter = (currentLetter + 26 + offset) % 26;
-        buttonText.text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[currentLetter].ToString();
     }
 
     private IEnumerator CountUp()
@@ -138,7 +153,7 @@ public class handTurkey : MonoBehaviour
         yield return null;
         foreach (char ch in rest)
         {
-            while (buttonText.text != ch.ToString().ToUpperInvariant())
+            while (buttonTexts[1].text != ch.ToString().ToUpperInvariant())
             {
                 buttons[0].OnInteract();
                 yield return null;
@@ -153,7 +168,7 @@ public class handTurkey : MonoBehaviour
     {
         while (!moduleSolved)
         {
-            while (buttonText.text != solution[enteringStage].ToString())
+            while (buttonTexts[1].text != solution[enteringStage].ToString())
             {
                 buttons[0].OnInteract();
                 yield return null;
