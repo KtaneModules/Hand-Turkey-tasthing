@@ -139,29 +139,55 @@ public class handTurkey : MonoBehaviour
 
     // Twitch Plays
 #pragma warning disable 414
-    private readonly string TwitchHelpMessage = "!{0} write family [Writes \"family\" on the hand turkey, adding onto any text that is already there if applicable]";
+    private readonly string TwitchHelpMessage = "!{0} cycle # [Presses the arrow button # times] !{0} write [Presses the letter button] !{0} switch [Long presses the arrow button]";
 #pragma warning restore 414
 
     private IEnumerator ProcessTwitchCommand(string input)
     {
         input = input.Trim().ToLowerInvariant();
-        if (!input.StartsWith("write "))
-            yield break;
-        var rest = input.Substring(6);
-        if (!rest.All(ch => "abcdefghijklmnopqrstuvwxyz".Contains(ch)))
-            yield break;
-        yield return null;
-        foreach (char ch in rest)
+        if (input.StartsWith("cycle "))
         {
-            while (buttonTexts[1].text != ch.ToString().ToUpperInvariant())
+            yield return null;
+            var rest = input.Substring(6);
+            var x = 0;
+            if (int.TryParse(input.Substring(6), out x))
             {
-                buttons[0].OnInteract();
-                yield return null;
-                buttons[0].OnInteractEnded();
-                yield return new WaitForSeconds(.1f);
+                if (x <= 0)
+                {
+                    yield return string.Format("sendtochaterror {0} is not a valid number.", rest);
+                    yield break;
+                }
+                else
+                {
+                    for (int i = 0; i < x; i++)
+                    {
+                        yield return new WaitForSeconds(.1f);
+                        buttons[0].OnInteract();
+                        yield return new WaitForSeconds(.1f);
+                        buttons[0].OnInteractEnded();
+                    }
+                }
             }
+            else
+            {
+                yield return string.Format("sendtochaterror {0} is not a valid number.", rest);
+                yield break;
+            }
+        }
+        else if (input == "write")
+        {
+            yield return null;
             buttons[1].OnInteract();
         }
+        else if (input == "switch" || input == "flip" || input == "reverse")
+        {
+            yield return null;
+            buttons[0].OnInteract();
+            yield return new WaitForSeconds(1.01f);
+            buttons[0].OnInteractEnded();
+        }
+        else
+            yield break;
     }
 
     private IEnumerator TwitchHandleForcedSolve()
