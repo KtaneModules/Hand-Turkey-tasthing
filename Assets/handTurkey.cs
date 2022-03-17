@@ -56,15 +56,15 @@ public class handTurkey : MonoBehaviour
         otherModules = bomb.GetSolvableModuleNames();
         otherModules.Remove("Hand Turkey");
         otherModules = otherModules.Select(x => x.ToUpperInvariant()).ToList();
-
         featherColorIndices = new int[4].Select(x => rnd.Range(0, 4)).ToArray();
         colorblindText.text = featherColorIndices.Select(x => "RGCM"[x]).Join("");
         for (int i = 0; i < 4; i++)
         {
             feathers[i].material.color = featherColors[featherColorIndices[i]];
-            var word = colorTable[featherColorIndices[i] * 4 + i];
-            var match = word.ToUpperInvariant().Any(ch => otherModules.Any(str => str[0] == ch));
-            Debug.LogFormat("[Hand Turkey #{0}] {1} finger: The feather is {2}, and the synonym used is {3}. Matching modules {4}found; add a {5} to the binary number.", moduleId, fingerNames[i], colorNames[featherColorIndices[i]], word, match ? "" : "not ", match ? "1" : "0");
+            var word = colorTable[featherColorIndices[i] * 4 + i].ToUpperInvariant();
+            var matches = bomb.GetSolvableModuleNames().Where(mod => mod.Count(ch => word.Contains(ch)) % 2 == 1 && mod != "Hand Turkey").ToArray();
+            var match = matches.Length != 0;
+            Debug.LogFormat("[Hand Turkey #{0}] {1} finger: The feather is {2}, and the synonym used is {3}. Matching module {4} found; add a {5} to the binary number.", moduleId, fingerNames[i], colorNames[featherColorIndices[i]], word.ToLowerInvariant(), match ? matches.PickRandom() : "NONE", match ? "1" : "0");
             if (match)
                 calculatedNumber += 1 << (3 - i);
         }
