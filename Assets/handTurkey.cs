@@ -13,28 +13,18 @@ public class handTurkey : MonoBehaviour
     public KMBombInfo bomb;
     public KMBombModule module;
 
-    public KMSelectable[] buttons;
     public Renderer[] feathers;
-    public TextMesh[] buttonTexts;
-    public TextMesh turkeyText;
     public TextMesh colorblindText;
     public Color[] featherColors;
     public Color solveColor;
 
     private int[] featherColorIndices = new int[4];
-    private int calculatedNumber;
-    private string solution;
-    private int currentLetter;
-    private int enteringStage;
-    private List<string> otherModules = new List<string>();
+    private int position;
 
     private static readonly string[] fingerNames = new[] { "pinky", "ring", "middle", "index" };
-    private static readonly string[] colorNames = new[] { "red", "green", "cyan", "magenta" };
-    private static readonly string[] colorTable = new[] { "crimson", "sanguine", "carmine", "scarlet", "lime", "forest", "verdant", "olive", "turquoise", "teal", "aquamarine", "azure", "purple", "violet", "lavender", "mauve" };
-    private static readonly string[] gratefulTable = new[] { "family", "friends", "food", "house", "medicine", "doctors", "firemen", "animals", "music", "games", "football", "modules", "weather", "nature", "quaaludes", "Latinas" };
-    private bool longPress;
-    private int offset = 1;
-    private Coroutine counting;
+    private static readonly string[] colorNames = new[] { "brown", "red", "orange", "yellow", "green", "blue", "pink" };
+    private static readonly string[] dishNames = new[] { "turkey", "cranberry sauce", "pumpkin pie", "lemonade", "becherovka", "quahogs", "benadryl" };
+    private static readonly int[] colorTable = new[] { 0, 3, 5, 3, 0, 4, 6, 4, 6, 4, 3, 0, 0, 1, 1, 4, 0, 5, 1, 5, 3, 1, 2, 1, 6, 2, 2, 3, 0, 2, 3, 1, 2, 0, 4, 5, 5, 2, 5, 2, 6, 4, 1, 5, 3, 6, 6, 4, 6 };
 
     private static int moduleIdCounter = 1;
     private int moduleId;
@@ -43,98 +33,113 @@ public class handTurkey : MonoBehaviour
     private void Awake()
     {
         moduleId = moduleIdCounter++;
-        foreach (KMSelectable button in buttons)
-        {
-            button.OnInteract += delegate () { PressButton(button); return false; };
-            button.OnInteractEnded += delegate () { ReleaseButton(button); };
-        }
         colorblindText.gameObject.SetActive(GetComponent<KMColorblindMode>().ColorblindModeActive);
     }
 
     private void Start()
     {
-        otherModules = bomb.GetSolvableModuleNames();
-        otherModules.Remove("Hand Turkey");
-        otherModules = otherModules.Select(x => x.ToUpperInvariant()).ToList();
-        featherColorIndices = new int[4].Select(x => rnd.Range(0, 4)).ToArray();
-        colorblindText.text = featherColorIndices.Select(x => "RGCM"[x]).Join("");
+        colorblindText.text = "";
         for (int i = 0; i < 4; i++)
         {
-            feathers[i].material.color = featherColors[featherColorIndices[i]];
-            var word = colorTable[featherColorIndices[i] * 4 + i].ToUpperInvariant();
-            var matches = bomb.GetSolvableModuleNames().Where(mod => mod.Count(ch => word.Contains(ch)) % 2 == 1 && mod != "Hand Turkey").ToArray();
-            var match = matches.Length != 0;
-            Debug.LogFormat("[Hand Turkey #{0}] {1} finger: The feather is {2}, and the synonym used is {3}. Matching module {4} found; add a {5} to the binary number.", moduleId, fingerNames[i], colorNames[featherColorIndices[i]], word.ToLowerInvariant(), match ? matches.PickRandom() : "NONE", match ? "1" : "0");
-            if (match)
-                calculatedNumber += 1 << (3 - i);
+            var color = rnd.Range(0, 7);
+            featherColorIndices[i] = color;
+            feathers[i].material.color = featherColors[color];
+            Debug.LogFormat("[Hand Turkey #{0}] The feather on the {1} finger is {2}. You grabbed {3}.", moduleId, fingerNames[i], colorNames[color], dishNames[color]);
+            colorblindText.text += "NROYGBP"[color];
         }
-        Debug.LogFormat("[Hand Turkey #{0}] The final calculated binary number is {1} ({2}). You are grateful for {4}{3}.", moduleId, Convert.ToString(calculatedNumber, 2).PadLeft(4, '0'), calculatedNumber, gratefulTable[calculatedNumber], calculatedNumber < 4 ? "your " : ""); ;
-        solution = gratefulTable[calculatedNumber].ToUpperInvariant();
-    }
 
-    private void PressButton(KMSelectable button)
-    {
-        button.AddInteractionPunch(.5f);
-        audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, button.transform);
-        if (moduleSolved)
-            return;
-        if (Array.IndexOf(buttons, button) == 0)
-            counting = StartCoroutine(CountUp());
+        var startingRow = 0;
+        var startingColumn = 0;
+        if (Voltage() != -1d)
+        {
+            startingRow = (int)(Math.Floor(Voltage()) % 7);
+            Debug.LogFormat("[Hand Turkey #{0}] A voltage meter is present. The starting row is {1}.", moduleId, startingRow);
+        }
         else
         {
-            if (solution[enteringStage].ToString() == buttonTexts[1].text)
+            startingRow = (colorNames[featherColorIndices[1]].Length + dishNames[featherColorIndices[3]].Length) % 7;
+            Debug.LogFormat("[Hand Turkey #{0}] A voltage meter is not present. The number of letters in in {1} plus the number of letters in {2} modulo 7 is {3}. This is the starting row.", moduleId, colorNames[featherColorIndices[1]], dishNames[featherColorIndices[3]], startingRow);
+        }
+        var date = DateTime.Now.ToString("MMddyyyy");
+        startingColumn = int.Parse(date) % 7;
+        Debug.LogFormat("[Hand Turkey #{0}] The concatenated date is {1}, modulo 7 is {2}.", moduleId, date, startingColumn);
+        position = startingRow * 7 + startingColumn;
+        Debug.LogFormat("[Hand Turkey #{0}] Your starting position is {1}.", moduleId, Coordinate(position));
+
+        // If you grabbed becherovka first...
+        if (featherColorIndices[0] == 4)
+        {
+            Debug.LogFormat("[Hand Turkey #{0}] You are an alcoholic. Move down 4 spaces.", moduleId);
+            for (int i = 0; i < 4; i++)
+                position += position / 7 == 6 ? -42 : 7;
+            Debug.LogFormat("[Hand Turkey #{0}] You are now at {1}.", moduleId, Coordinate(position));
+        }
+        // If you grabbed cranberry sauce, pumpkin pie, and lemonade...
+        if (featherColorIndices.Contains(1) && featherColorIndices.Contains(2) && featherColorIndices.Contains(3)) 
+        {
+            Debug.LogFormat("[Hand Turkey #{0}] You are on a sugar high. Move up 3 spaces.", moduleId);
+            for (int i = 0; i < 3; i++)
+                position += position / 7 == 0 ? 42 : -7;
+            Debug.LogFormat("[Hand Turkey #{0}] You are now at {1}.", moduleId, Coordinate(position));
+        }
+        // If you grabbed something more than once...
+        foreach (int ix in Enumerable.Range(0, 7)) 
+        {
+            if (featherColorIndices.Count(x => x == ix) > 1)
             {
-                turkeyText.text += buttonTexts[1].text;
-                enteringStage++;
-                if (turkeyText.text == solution)
+                var distances = new int[4];
+                for (int i = 0; i < 4; i++)
                 {
-                    Debug.LogFormat("[Hand Turkey #{0}] Finished entering the word. Module solved!", moduleId);
-                    module.HandlePass();
-                    moduleSolved = true;
-                    audio.PlaySoundAtTransform("solve", transform);
-                    colorblindText.text = "";
-                    foreach (Renderer feather in feathers)
-                        feather.material.color = solveColor;
-                    foreach (TextMesh t in buttonTexts)
-                        t.text = "-";
+                    var temPos = position;
+                    var count = 0;
+                    while (temPos == position || colorTable[temPos] != ix)
+                    {
+                        if (i == 0)
+                            temPos += temPos % 7 == 0 ? 6 : -1;
+                        else if (i == 1)
+                            temPos += temPos / 7 == 0 ? 42 : -7;
+                        else if (i == 2)
+                            temPos += temPos % 7 == 6 ? -6 : 1;
+                        else if (i == 3)
+                            temPos += temPos / 7 == 6 ? -42 : 7;
+                        count++;
+                    }
+                    distances[i] = count;
+                }
+                var direction = Array.IndexOf(distances, distances.Min());
+                Debug.LogFormat("[Hand Turkey #{0}] You took {1} more than once. Move {2} 2 spaces.", moduleId, dishNames[ix], new[] { "left", "up", "right", "down" }[direction]);
+                for (int i = 0; i < 2; i++)
+                {
+                    if (direction == 0)
+                        position += position % 7 == 0 ? 6 : -1;
+                    else if (direction == 1)
+                        position += position / 7 == 0 ? 42 : -7;
+                    else if (direction == 2)
+                        position += position % 7 == 6 ? -6 : 1;
+                    else if (direction == 3)
+                        position += position / 7 == 6 ? -42 : 7;
                 }
             }
-            else
-            {
-                Debug.LogFormat("[Hand Turkey #{0}] Struck because you tried to enter a wrong letter!", moduleId);
-                module.HandleStrike();
-            }
+        } 
+        // If you grabbed four different items...
+        if (featherColorIndices.Distinct().Count() == 4)
+        {
         }
     }
 
-    private void ReleaseButton(KMSelectable button)
+    private static string Coordinate(int pos)
     {
-        if (Array.IndexOf(buttons, button) == 1 || moduleSolved)
-            return;
-        if (counting != null)
-        {
-            StopCoroutine(counting);
-            counting = null;
-        }
-        if (longPress)
-        {
-            offset *= -1;
-            buttonTexts[0].transform.localEulerAngles = offset == 1 ? new Vector3(180f, 0f, 0f) : new Vector3(180f, 0f, 180f);
-            buttonTexts[0].transform.localPosition = offset == 1 ? new Vector3(.00139f, .00151f, .0056f) : new Vector3(-.0008f, .0003f, .0056f);
-        }
-        else
-        {
-            currentLetter = (currentLetter + 26 + offset) % 26;
-            buttonTexts[1].text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[currentLetter].ToString();
-        }
-        longPress = false;
+        return "ABCDEFG"[pos % 7].ToString() + pos / 7;
     }
 
-    private IEnumerator CountUp()
+    private double Voltage()
     {
-        yield return new WaitForSeconds(1f);
-        longPress = true;
-        audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonRelease, buttons[0].transform);
+        if (bomb.QueryWidgets("volt", "").Count() != 0)
+        {
+            double TempVoltage = double.Parse(bomb.QueryWidgets("volt", "")[0].Substring(12).Replace("\"}", ""));
+            return TempVoltage;
+        }
+        return -1d;
     }
 
     // Twitch Plays
@@ -145,63 +150,11 @@ public class handTurkey : MonoBehaviour
     private IEnumerator ProcessTwitchCommand(string input)
     {
         input = input.Trim().ToLowerInvariant();
-        if (input.StartsWith("cycle "))
-        {
-            yield return null;
-            var rest = input.Substring(6);
-            var x = 0;
-            if (int.TryParse(input.Substring(6), out x))
-            {
-                if (x <= 0)
-                {
-                    yield return string.Format("sendtochaterror {0} is not a valid number.", rest);
-                    yield break;
-                }
-                else
-                {
-                    for (int i = 0; i < x; i++)
-                    {
-                        yield return new WaitForSeconds(.1f);
-                        buttons[0].OnInteract();
-                        yield return new WaitForSeconds(.1f);
-                        buttons[0].OnInteractEnded();
-                    }
-                }
-            }
-            else
-            {
-                yield return string.Format("sendtochaterror {0} is not a valid number.", rest);
-                yield break;
-            }
-        }
-        else if (input == "write")
-        {
-            yield return null;
-            buttons[1].OnInteract();
-        }
-        else if (input == "switch" || input == "flip" || input == "reverse")
-        {
-            yield return null;
-            buttons[0].OnInteract();
-            yield return new WaitForSeconds(1.01f);
-            buttons[0].OnInteractEnded();
-        }
-        else
-            yield break;
+        yield return null;
     }
 
     private IEnumerator TwitchHandleForcedSolve()
     {
-        while (!moduleSolved)
-        {
-            while (buttonTexts[1].text != solution[enteringStage].ToString())
-            {
-                buttons[0].OnInteract();
-                yield return null;
-                buttons[0].OnInteractEnded();
-                yield return new WaitForSeconds(.1f);
-            }
-            buttons[1].OnInteract();
-        }
+        yield return null;
     }
 }
